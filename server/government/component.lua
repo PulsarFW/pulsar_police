@@ -12,7 +12,7 @@ AddEventHandler('onResourceStart', function(resource)
     exports["pulsar-core"]:RegisterServerCallback("Government:BuyID", function(source, data, cb)
       local char = exports['pulsar-characters']:FetchCharacterSource(source)
       if exports['pulsar-finance']:WalletModify(source, -500) then
-        exports.ox_inventory:AddItem(char:GetData("SID"), "govid", 1, {}, 1)
+        exports.ox_inventory:AddItem(source, "govid", 1, {}, 1)
       else
         exports['pulsar-hud']:Notification(source, "error", "Not Enough Cash")
       end
