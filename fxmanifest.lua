@@ -4,7 +4,7 @@ lua54("yes")
 fx_version("cerulean")
 game("gta5")
 
-version "1.0.4"
+version '1.0.6'
 repository("https://www.github.com/PulsarFW/pulsar-police")
 
 client_script("@pulsar-core/exports/cl_error.lua")
