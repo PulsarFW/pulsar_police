@@ -1,15 +1,19 @@
-AddEventHandler('onResourceStart', function(resource)
-	if resource == GetCurrentResourceName() then
-		Wait(1000)
-		EMSCallbacks()
-		EMSItems()
-	end
+local config = load(LoadResourceFile(GetCurrentResourceName(), "config/server.lua"))()
+local sharedConfig = load(LoadResourceFile(GetCurrentResourceName(), "config/shared.lua"))()
+
+CreateThread(function()
+	EMSCallbacks()
+	EMSItems()
+end)
+
+AddEventHandler("Proxy:Shared:RegisterReady", function()
+	exports["pulsar_core"]:RegisterComponent("EMS", _EMS)
 end)
 
 RegisterNetEvent("EMS:Server:CheckICUPatients", function()
 	local src = source
 	local count = 0
-	for k, v in ipairs(exports['pulsar-characters']:FetchAllCharacters()) do
+	for k, v in ipairs(plsr.Fetch:AllCharacters()) do
 		if v ~= nil then
 			if v:GetData("ICU") ~= nil and not v:GetData("ICU").Released then
 				count = count + 1
@@ -19,13 +23,12 @@ RegisterNetEvent("EMS:Server:CheckICUPatients", function()
 
 	if count > 0 then
 		if count == 1 then
-			exports['pulsar-hud']:Notification(src, "info", "There Is 1 Patient In ICU")
+			plsr.Execute:Client(src, "Notification", "Info", "There Is 1 Patient In ICU")
 		else
-			exports['pulsar-hud']:Notification(src, "info",
-				string.format("There Are %s Patients In ICU", count))
+			plsr.Execute:Client(src, "Notification", "Info", string.format("There Are %s Patients In ICU", count))
 		end
 	else
-		exports['pulsar-hud']:Notification(src, "info", "There Are No Patients In ICU")
+		plsr.Execute:Client(src, "Notification", "Info", "There Are No Patients In ICU")
 	end
 end)
 
@@ -35,13 +38,13 @@ RegisterNetEvent("EMS:Server:RequestHelp", function()
 end)
 
 function EMSCallbacks()
-	exports["pulsar-core"]:RegisterServerCallback("EMS:Stabilize", function(source, data, cb)
-		local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-		local char = exports['pulsar-characters']:FetchCharacterSource(tonumber(data))
+	plsr.Callbacks:RegisterServerCallback("EMS:Stabilize", function(source, data, cb)
+		local myChar = plsr.Fetch:CharacterSource(source)
+		local char = plsr.Fetch:CharacterSource(tonumber(data))
 		if char ~= nil then
-			if exports.ox_inventory:ItemsHas(myChar:GetData("SID"), 1, "traumakit", 1) then
-				if exports['pulsar-jobs']:HasJob(source, "ems") then
-					exports['pulsar-core']:LoggerInfo(
+			if plsr.Inventory.Items:Has(myChar:GetData("SID"), 1, sharedConfig.Items.medical.traumakit, 1) then
+				if plsr.Jobs.Permissions:HasJob(source, "ems") then
+					plsr.Logger:Info(
 						"EMS",
 						string.format(
 							"%s %s (%s) Stabilized %s %s (%s)",
@@ -58,7 +61,7 @@ function EMSCallbacks()
 							database = true,
 						}
 					)
-					exports["pulsar-core"]:ClientCallback(data, "Damage:FieldStabalize")
+					plsr.Callbacks:ClientCallback(data, "Damage:FieldStabalize")
 					cb({ error = false })
 				else
 					cb({ error = true, code = 3 })
@@ -71,11 +74,11 @@ function EMSCallbacks()
 		end
 	end)
 
-	exports["pulsar-core"]:RegisterServerCallback("EMS:FieldTreatWounds", function(source, data, cb)
-		local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-		if exports['pulsar-jobs']:HasJob(source, "ems") then
-			if exports.ox_inventory:ItemsHas(myChar:GetData("SID"), 1, "traumakit", 1) then
-				exports['pulsar-hud']:Notification("success", data, "Your Wounds Were Treated")
+	plsr.Callbacks:RegisterServerCallback("EMS:FieldTreatWounds", function(source, data, cb)
+		local myChar = plsr.Fetch:CharacterSource(source)
+		if plsr.Jobs.Permissions:HasJob(source, "ems") then
+			if plsr.Inventory.Items:Has(myChar:GetData("SID"), 1, sharedConfig.Items.medical.traumakit, 1) then
+				plsr.Execute:Client(data, "Notification", "Success", "Your Wounds Were Treated")
 				cb({ error = false })
 			else
 				cb({ error = true, code = 2 })
@@ -85,11 +88,11 @@ function EMSCallbacks()
 		end
 	end)
 
-	-- exports["pulsar-core"]:RegisterServerCallback("EMS:ApplyGauze", function(source, data, cb)
-	-- 	local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-	-- 	if exports['pulsar-jobs']:HasJob(source, "ems") then
-	-- 		if exports.ox_inventory:Remove(myChar:GetData("SID"), 1, "gauze", 1) then
-	-- 			local target = exports['pulsar-core']:FetchSource(data)
+	-- Callbacks:RegisterServerCallback("EMS:ApplyGauze", function(source, data, cb)
+	-- 	local myChar = Fetch:CharacterSource(source)
+	-- 	if Jobs.Permissions:HasJob(source, "ems") then
+	-- 		if Inventory.Items:Remove(myChar:GetData("SID"), 1, "gauze", 1) then
+	-- 			local target = Fetch:Source(data)
 	-- 			if target ~= nil then
 	-- 				local tChar = target:GetData("Character")
 	-- 				if tChar ~= nil then
@@ -98,7 +101,7 @@ function EMSCallbacks()
 	-- 						dmg.Bleed = dmg.Bleed - 1
 	-- 						tChar:SetData("Damage", dmg)
 	-- 					else
-	-- 						exports['pulsar-hud']:Notification("error", data, "You continue bleeding through the gauze")
+	-- 						Execute:Client(data, "Notification", "Error", "You continue bleeding through the gauze")
 	-- 					end
 	-- 					cb({ error = false })
 	-- 				else
@@ -115,21 +118,21 @@ function EMSCallbacks()
 	-- 	end
 	-- end)
 
-	exports["pulsar-core"]:RegisterServerCallback("EMS:ApplyBandage", function(source, data, cb)
-		local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-		if exports['pulsar-jobs']:HasJob(source, "ems") then
-			if exports.ox_inventory:Remove(myChar:GetData("SID"), "bandage", 1) then
+	plsr.Callbacks:RegisterServerCallback("EMS:ApplyBandage", function(source, data, cb)
+		local myChar = plsr.Fetch:CharacterSource(source)
+		if plsr.Jobs.Permissions:HasJob(source, "ems") then
+			if plsr.Inventory.Items:Remove(myChar:GetData("SID"), 1, sharedConfig.Items.medical.bandage, 1) then
 				local ped = GetPlayerPed(data)
 				local currHp = GetEntityHealth(ped)
 				if currHp < (GetEntityMaxHealth(ped) * 0.75) then
 					local p = promise.new()
 
-					exports["pulsar-core"]:ClientCallback(data, "EMS:ApplyBandage", {}, function(s)
+					plsr.Callbacks:ClientCallback(data, "EMS:ApplyBandage", {}, function(s)
 						p:resolve(s)
 					end)
 
 					Citizen.Await(p)
-					exports['pulsar-hud']:Notification("success", data, "A Bandage Was Applied To You")
+					plsr.Execute:Client(data, "Notification", "Success", "A Bandage Was Applied To You")
 					cb({ error = false })
 				else
 					cb({ error = true, code = 3 })
@@ -142,12 +145,12 @@ function EMSCallbacks()
 		end
 	end)
 
-	exports["pulsar-core"]:RegisterServerCallback("EMS:ApplyMorphine", function(source, data, cb)
-		local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-		if exports['pulsar-jobs']:HasJob(source, "ems") then
-			if exports.ox_inventory:Remove(myChar:GetData("SID"), 1, "morphine", 1) then
-				exports['pulsar-damage']:EffectsPainkiller(tonumber(data), 3)
-				exports['pulsar-hud']:Notification("success", data, "You Received A Morphine Shot")
+	plsr.Callbacks:RegisterServerCallback("EMS:ApplyMorphine", function(source, data, cb)
+		local myChar = plsr.Fetch:CharacterSource(source)
+		if plsr.Jobs.Permissions:HasJob(source, "ems") then
+			if plsr.Inventory.Items:Remove(myChar:GetData("SID"), 1, sharedConfig.Items.medical.morphine, 1) then
+				plsr.Damage.Effects:Painkiller(tonumber(data), 3)
+				plsr.Execute:Client(data, "Notification", "Success", "You Received A Morphine Shot")
 				cb({ error = false })
 			else
 				cb({ error = true, code = 2 })
@@ -157,23 +160,23 @@ function EMSCallbacks()
 		end
 	end)
 
-	exports["pulsar-core"]:RegisterServerCallback("EMS:TreatWounds", function(source, data, cb)
-		local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-		if exports['pulsar-jobs']:HasJob(source, "ems") then
-			exports["pulsar-core"]:ClientCallback(data, "Damage:Heal", true)
+	plsr.Callbacks:RegisterServerCallback("EMS:TreatWounds", function(source, data, cb)
+		local myChar = plsr.Fetch:CharacterSource(source)
+		if plsr.Jobs.Permissions:HasJob(source, "ems") then
+			plsr.Callbacks:ClientCallback(data, "Damage:Heal", true)
 			--TriggerClientEvent("Hospital:Client:GetOut", data)
-			exports['pulsar-hud']:Notification(source, "success", "Patient Has Been Treated")
-			exports['pulsar-hud']:Notification("success", data, "You've Been Treated")
+			plsr.Execute:Client(source, "Notification", "Success", "Patient Has Been Treated")
+			plsr.Execute:Client(data, "Notification", "Success", "You've Been Treated")
 			cb({ error = false })
 		else
 			cb({ error = true, code = 1 })
 		end
 	end)
 
-	exports["pulsar-core"]:RegisterServerCallback("EMS:CheckDamage", function(source, data, cb)
-		local myChar = exports['pulsar-characters']:FetchCharacterSource(source)
-		if exports['pulsar-jobs']:HasJob(source, "ems") or exports['pulsar-jobs']:HasJob(source, "police") then
-			local tChar = exports['pulsar-characters']:FetchCharacterSource(data)
+	plsr.Callbacks:RegisterServerCallback("EMS:CheckDamage", function(source, data, cb)
+		local myChar = plsr.Fetch:CharacterSource(source)
+		if plsr.Jobs.Permissions:HasJob(source, "ems") or plsr.Jobs.Permissions:HasJob(source, "police") then
+			local tChar = plsr.Fetch:CharacterSource(data)
 			if tChar ~= nil then
 				cb(tChar:GetData("Damage"))
 			else
@@ -184,39 +187,38 @@ function EMSCallbacks()
 		end
 	end)
 
-	exports["pulsar-core"]:RegisterServerCallback("EMS:DrugTest", function(source, data, cb)
-		local char = exports['pulsar-characters']:FetchCharacterSource(source)
+	plsr.Callbacks:RegisterServerCallback("EMS:DrugTest", function(source, data, cb)
+		local char = plsr.Fetch:CharacterSource(source)
 		if char ~= nil then
-			local pState = Player(source).state
-			if pState.onDuty == "ems" then
-				local tarChar = exports['pulsar-characters']:FetchCharacterSource(data)
+			if plsr.State:Player(source).onDuty == "ems" then
+				local tarChar = plsr.Fetch:CharacterSource(data)
 				if tarChar ~= nil then
 					local tarStates = tarChar:GetData("DrugStates") or {}
 					local output = {}
 					for k, v in pairs(tarStates) do
 						if v.expires > os.time() then
-							local item = exports.ox_inventory:ItemsGetData(v.item)
+							local item = plsr.Inventory.Items:GetData(v.item)
 							if item and item.drugState ~= nil then
 								local pct = ((v.expires - os.time()) / item.drugState.duration) * 100
 								if pct <= 25 and pct >= 5 then
 									table.insert(
 										output,
-										string.format("Low Presence of %s", Config.Drugs[item.drugState.type])
+										string.format("Low Presence of %s", config.Drugs[item.drugState.type])
 									)
 								elseif pct <= 50 then
 									table.insert(
 										output,
-										string.format("Moderate Presence of %s", Config.Drugs[item.drugState.type])
+										string.format("Moderate Presence of %s", config.Drugs[item.drugState.type])
 									)
 								elseif pct <= 75 then
 									table.insert(
 										output,
-										string.format("High Presence of %s", Config.Drugs[item.drugState.type])
+										string.format("High Presence of %s", config.Drugs[item.drugState.type])
 									)
 								elseif pct > 5 then
 									table.insert(
 										output,
-										string.format("Very High Presence of %s", Config.Drugs[item.drugState.type])
+										string.format("Very High Presence of %s", config.Drugs[item.drugState.type])
 									)
 								end
 							end
@@ -233,9 +235,9 @@ function EMSCallbacks()
 							str = str .. string.format("<li>%s</li>", v)
 						end
 						str = str .. "</ul>"
-						exports["pulsar-chat"]:SendTestResult(source, str)
+						plsr.Chat.Send.Services:TestResult(source, str)
 					else
-						exports["pulsar-chat"]:SendTestResult(
+						plsr.Chat.Send.Services:TestResult(
 							source,
 							"Drug Test Results:<br/><ul><li>All Results Are Negative</li></ul>"
 						)
@@ -250,16 +252,15 @@ end
 
 RegisterNetEvent("EMS:Server:Panic", function(isAlpha)
 	local src = source
-	local char = exports['pulsar-characters']:FetchCharacterSource(src)
-	local pState = Player(src).state
-	if pState.onDuty == "ems" then
+	local char = plsr.Fetch:CharacterSource(src)
+		if plsr.State:Player(src).onDuty == "ems" then
 		local coords = GetEntityCoords(GetPlayerPed(src))
-		exports["pulsar-core"]:ClientCallback(src, "EmergencyAlerts:GetStreetName", coords, function(location)
+		plsr.Callbacks:ClientCallback(src, "EmergencyAlerts:GetStreetName", coords, function(location)
 			if isAlpha then
-				exports['pulsar-mdt']:EmergencyAlertsCreate(
+				plsr.EmergencyAlerts:Create(
 					"13-A",
 					"Medic Down",
-					{ "police_alerts", "ems_alerts" },
+					{"police_alerts", "ems_alerts"},
 					location,
 					{
 						icon = "circle-exclamation",
@@ -268,7 +269,7 @@ RegisterNetEvent("EMS:Server:Panic", function(isAlpha)
 							char:GetData("Callsign"),
 							char:GetData("First"),
 							char:GetData("Last"),
-							pState?.onRadio and string.format("Radio Freq: %s", pState.onRadio) or "Not On Radio"
+							plsr.State:Player(src).onRadio and string.format("Radio Freq: %s", plsr.State:Player(src).onRadio) or "Not On Radio"
 						)
 					},
 					true,
@@ -281,10 +282,10 @@ RegisterNetEvent("EMS:Server:Panic", function(isAlpha)
 					2
 				)
 			else
-				exports['pulsar-mdt']:EmergencyAlertsCreate(
+				plsr.EmergencyAlerts:Create(
 					"13-B",
 					"Medic Down",
-					{ "police_alerts", "ems_alerts" },
+					{"police_alerts", "ems_alerts"},
 					location,
 					{
 						icon = "circle-exclamation",
@@ -293,7 +294,7 @@ RegisterNetEvent("EMS:Server:Panic", function(isAlpha)
 							char:GetData("Callsign"),
 							char:GetData("First"),
 							char:GetData("Last"),
-							pState?.onRadio and string.format("Radio Freq: %s", pState.onRadio) or "Not On Radio"
+							plsr.State:Player(src).onRadio and string.format("Radio Freq: %s", plsr.State:Player(src).onRadio) or "Not On Radio"
 						)
 					},
 					false,
@@ -309,3 +310,5 @@ RegisterNetEvent("EMS:Server:Panic", function(isAlpha)
 		end)
 	end
 end)
+
+_EMS = {}

@@ -1,50 +1,54 @@
+local config = load(LoadResourceFile(GetCurrentResourceName(), "config/server.lua"))()
+
 AddEventHandler("Characters:Server:PlayerLoggedOut", function(source, cData)
-	local playerState = Player(source).state
-	playerState.isCuffed = false
-	playerState.isHardCuffed = false
+	TriggerClientEvent('Handcuffs:Client:SetCuffed', source, false, false)
+	plsr.State:SetPublicFlag(source, 'isCuffed', false)
+	plsr.State:SetPublicFlag(source, 'isHardCuffed', false)
 end)
 
-AddEventHandler('onResourceStart', function(resource)
-	if resource == GetCurrentResourceName() then
-		Wait(1000)
-		HandcuffItems()
-	end
+CreateThread(function()
+	HandcuffItems()
+end)
+
+AddEventHandler("Proxy:Shared:RegisterReady", function()
+	exports["pulsar_core"]:RegisterComponent("Handcuffs", _HANDCUFFS)
 end)
 
 function DoCuff(source, target, isHardCuffed, isForced)
 	TriggerClientEvent("Handcuffs:Client:CuffingAnim", source)
-	exports["pulsar-core"]:ClientCallback(target, "Handcuffs:DoCuff", {
+	plsr.Callbacks:ClientCallback(target, "Handcuffs:DoCuff", {
 		cuffer = source,
 		isHardCuffed = isHardCuffed,
 		forced = isForced,
 	}, function(result)
 		if result == -1 then
-			exports['pulsar-hud']:Notification(source, "error", "Unable To Cuff Player")
+			plsr.Execute:Client(source, "Notification", "Error", "Unable To Cuff Player")
 		else
-			local playerState = Player(target).state
 			local ped = GetPlayerPed(target)
 			if result then
 				ClearPedTasksImmediately(GetPlayerPed(target))
 				ClearPedTasksImmediately(GetPlayerPed(source))
 
-				exports['pulsar-hud']:Notification(source, "error", "Suspect Broke Out Of The Cuffs")
-				exports["pulsar-sounds"]:PlayDistance(target, 10, "handcuff_break.ogg", 0.35)
-				--exports["pulsar-sounds"]:PlayOne(target, "handcuff_break.ogg", 0.35)
-				playerState.isCuffed = false
-				playerState.isHardCuffed = false
+				plsr.Execute:Client(source, "Notification", "Error", "Suspect Broke Out Of The Cuffs")
+				plsr.Sounds.Play:Distance(target, 10, "handcuff_break.ogg", 0.35)
+				--plsr.Sounds.Play:One(target, "handcuff_break.ogg", 0.35)
+				TriggerClientEvent('Handcuffs:Client:SetCuffed', target, false, false)
+				plsr.State:SetPublicFlag(target, 'isCuffed', false)
+				plsr.State:SetPublicFlag(target, 'isHardCuffed', false)
 				SetPedConfigFlag(ped, 120, false)
 				SetPedConfigFlag(ped, 121, false)
 			else
-				exports['pulsar-hud']:Notification(source, "success", "You Cuffed A Player")
-				exports["pulsar-sounds"]:PlayDistance(target, 10, "handcuff_on.ogg", 0.55)
+				plsr.Execute:Client(source, "Notification", "Success", "You Cuffed A Player")
+				plsr.Sounds.Play:Distance(target, 10, "handcuff_on.ogg", 0.55)
 				CreateThread(function()
 					Wait(1050)
-					exports["pulsar-sounds"]:PlayDistance(target, 10, "handcuff_on.ogg", 0.55)
+					plsr.Sounds.Play:Distance(target, 10, "handcuff_on.ogg", 0.55)
 				end)
 				SetPedConfigFlag(ped, 120, true)
 				SetPedConfigFlag(ped, 121, isHardCuffed)
-				playerState.isCuffed = true
-				playerState.isHardCuffed = isHardCuffed
+				TriggerClientEvent('Handcuffs:Client:SetCuffed', target, true, isHardCuffed)
+				plsr.State:SetPublicFlag(target, 'isCuffed', true)
+				plsr.State:SetPublicFlag(target, 'isHardCuffed', isHardCuffed)
 				--FreezeEntityPosition(ped, false)
 				TriggerClientEvent("Handcuffs:Client:CuffThread", target)
 			end
@@ -63,18 +67,18 @@ RegisterNetEvent("Handcuffs:Server:HardCuff", function(target)
 	local tPos = GetEntityCoords(GetPlayerPed(target))
 
 	if #(vector3(mPos.x, mPos.y, mPos.z) - vector3(tPos.x, tPos.y, tPos.z)) <= 1.5 then
-		if exports.ox_inventory:ItemsHasAnyItems(src, Config.CuffItems) then
+		if plsr.Inventory.Items:HasAnyItems(src, config.CuffItems) then
 			if
-				not Player(target).state.isCuffed
-				or (Player(target).state.isCuffed and not Player(target).state.isHardCuffed)
+				not plsr.State:Player(target).isCuffed
+				or (plsr.State:Player(target).isCuffed and not plsr.State:Player(target).isHardCuffed)
 			then
-				exports['pulsar-police']:HardCuffTarget(src, target, false)
+				plsr.Handcuffs:HardCuffTarget(src, target, false)
 			else
-				exports['pulsar-hud']:Notification(source, "error", "Target Already Hard Cuffed")
+				plsr.Execute:Client(source, "Notification", "Error", "Target Already Hard Cuffed")
 			end
 		end
 	else
-		exports['pulsar-hud']:Notification(source, "error", "Target Too Far")
+		plsr.Execute:Client(source, "Notification", "Error", "Target Too Far")
 	end
 end)
 
@@ -89,10 +93,9 @@ RegisterNetEvent("Handcuffs:Server:SoftCuff", function(target)
 	local tPos = GetEntityCoords(GetPlayerPed(target))
 
 	if #(vector3(mPos.x, mPos.y, mPos.z) - vector3(tPos.x, tPos.y, tPos.z)) <= 1.5 then
-		if exports.ox_inventory:ItemsHasAnyItems(src, Config.CuffItems) then
-			local pState = Player(target).state
-			if not pState.isCuffed or (pState.isCuffed and pState.isHardCuffed) then
-				exports['pulsar-police']:SoftCuffTarget(src, target, false)
+		if plsr.Inventory.Items:HasAnyItems(src, config.CuffItems) then
+			if not plsr.State:Player(target).isCuffed or (plsr.State:Player(target).isCuffed and plsr.State:Player(target).isHardCuffed) then
+				plsr.Handcuffs:SoftCuffTarget(src, target, false)
 			end
 		else
 			--missing items
@@ -113,9 +116,9 @@ RegisterNetEvent("Handcuffs:Server:Uncuff", function(target)
 	local tPos = GetEntityCoords(GetPlayerPed(target))
 
 	if #(vector3(mPos.x, mPos.y, mPos.z) - vector3(tPos.x, tPos.y, tPos.z)) <= 1.5 then
-		if exports.ox_inventory:ItemsHasAnyItems(src, Config.CuffItems) then
-			if Player(target).state.isCuffed then
-				exports['pulsar-police']:UncuffTarget(src, target)
+		if plsr.Inventory.Items:HasAnyItems(src, config.CuffItems) then
+			if plsr.State:Player(target).isCuffed then
+				plsr.Handcuffs:UncuffTarget(src, target)
 			end
 		end
 	else
@@ -123,132 +126,127 @@ RegisterNetEvent("Handcuffs:Server:Uncuff", function(target)
 	end
 end)
 
-exports('SelfToggle', function(source)
-	if source ~= nil then
-		if not Player(source).state.isCuffed then
-			DoCuff(source, source, false, false)
-			exports['pulsar-hud']:Notification(source, "error", "Nobody Around To Cuff")
+_HANDCUFFS = {
+	SelfToggle = function(self, source)
+		if source ~= nil then
+			if not plsr.State:Player(source).isCuffed then
+				DoCuff(source, source, false, false)
+				plsr.Execute:Client(source, "Notification", "Error", "Nobody Around To Cuff")
+			else
+				plsr.Handcuffs:UncuffTarget(source, source)
+			end
 		else
-			exports['pulsar-police']:UncuffTarget(source, source)
+			plsr.Execute:Client(source, "Notification", "Error", "Nobody To Cuff")
 		end
-	else
-		exports['pulsar-hud']:Notification(source, "error", "Nobody To Cuff")
-	end
-end)
-
-exports('ToggleCuffs', function(source)
-	exports["pulsar-core"]:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
-		if target ~= nil then
-			if not Player(target).state.isCuffed then
-				local myPos = GetEntityCoords(GetPlayerPed(source))
-				local pos = GetEntityCoords(GetPlayerPed(target))
-				if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
-					DoCuff(source, target, false, false)
-					return
+	end,
+	ToggleCuffs = function(self, source)
+		plsr.Callbacks:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
+			if target ~= nil then
+				if not plsr.State:Player(target).isCuffed then
+					local myPos = GetEntityCoords(GetPlayerPed(source))
+					local pos = GetEntityCoords(GetPlayerPed(target))
+					if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
+						DoCuff(source, target, false, false)
+						return
+					end
+					plsr.Execute:Client(source, "Notification", "Error", "Nobody Around To Cuff")
+				else
+					plsr.Handcuffs:UncuffTarget(source, target)
 				end
-				exports['pulsar-hud']:Notification(source, "error", "Nobody Around To Cuff")
 			else
-				exports['pulsar-police']:UncuffTarget(source, target)
+				plsr.Execute:Client(source, "Notification", "Error", "Nobody To Cuff")
 			end
-		else
-			exports['pulsar-hud']:Notification(source, "error", "Nobody To Cuff")
-		end
-	end)
-end)
-
-exports('SoftCuff', function(source)
-	exports["pulsar-core"]:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
-		if target ~= nil then
-			if not Player(target).state.isCuffed then
-				local myPos = GetEntityCoords(GetPlayerPed(source))
-				local pos = GetEntityCoords(GetPlayerPed(target))
-				if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
-					DoCuff(source, target, false, false)
-					return
+		end)
+	end,
+	SoftCuff = function(self, source)
+		plsr.Callbacks:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
+			if target ~= nil then
+				if not plsr.State:Player(target).isCuffed then
+					local myPos = GetEntityCoords(GetPlayerPed(source))
+					local pos = GetEntityCoords(GetPlayerPed(target))
+					if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
+						DoCuff(source, target, false, false)
+						return
+					end
+					plsr.Execute:Client(source, "Notification", "Error", "Nobody Around To Cuff")
+				else
+					plsr.Execute:Client(source, "Notification", "Error", "Player Already Cuffed")
 				end
-				exports['pulsar-hud']:Notification(source, "error", "Nobody Around To Cuff")
 			else
-				exports['pulsar-hud']:Notification(source, "error", "Player Already Cuffed")
+				plsr.Execute:Client(source, "Notification", "Error", "Nobody To Cuff")
 			end
-		else
-			exports['pulsar-hud']:Notification(source, "error", "Nobody To Cuff")
+		end)
+	end,
+	SoftCuffTarget = function(self, source, target, forced)
+		local myPos = GetEntityCoords(GetPlayerPed(source))
+		local pos = GetEntityCoords(GetPlayerPed(target))
+		if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
+			DoCuff(source, target, false, forced)
+			return
 		end
-	end)
-end)
-
-exports('SoftCuffTarget', function(source, target, forced)
-	local myPos = GetEntityCoords(GetPlayerPed(source))
-	local pos = GetEntityCoords(GetPlayerPed(target))
-	if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
-		DoCuff(source, target, false, forced)
-		return
-	end
-	exports['pulsar-hud']:Notification(source, "error", "Nobody Around To Cuff")
-end)
-
-exports('HardCuff', function(source)
-	exports["pulsar-core"]:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
-		if target ~= nil then
-			if not Player(target).state.isCuffed then
-				local myPos = GetEntityCoords(GetPlayerPed(source))
-				local pos = GetEntityCoords(GetPlayerPed(target))
-				if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
-					DoCuff(source, target, true, false)
-					return
+		plsr.Execute:Client(source, "Notification", "Error", "Nobody Around To Cuff")
+	end,
+	HardCuff = function(self, source)
+		plsr.Callbacks:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
+			if target ~= nil then
+				if not plsr.State:Player(target).isCuffed then
+					local myPos = GetEntityCoords(GetPlayerPed(source))
+					local pos = GetEntityCoords(GetPlayerPed(target))
+					if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
+						DoCuff(source, target, true, false)
+						return
+					end
+					plsr.Execute:Client(source, "Notification", "Error", "Nobody Around To Cuff")
+				else
+					plsr.Execute:Client(source, "Notification", "Error", "Player Already Cuffed")
 				end
-				exports['pulsar-hud']:Notification(source, "error", "Nobody Around To Cuff")
 			else
-				exports['pulsar-hud']:Notification(source, "error", "Player Already Cuffed")
+				plsr.Execute:Client(source, "Notification", "Error", "Nobody To Cuff")
 			end
-		else
-			exports['pulsar-hud']:Notification(source, "error", "Nobody To Cuff")
+		end)
+	end,
+	HardCuffTarget = function(self, source, target, forced)
+		local myPos = GetEntityCoords(GetPlayerPed(source))
+		local pos = GetEntityCoords(GetPlayerPed(target))
+		if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
+			DoCuff(source, target, true, forced)
+			return
 		end
-	end)
-end)
-
-exports('HardCuffTarget', function(source, target, forced)
-	local myPos = GetEntityCoords(GetPlayerPed(source))
-	local pos = GetEntityCoords(GetPlayerPed(target))
-	if #(vector3(myPos.x, myPos.y, myPos.z) - vector3(pos.x, pos.y, pos.z)) <= 1.25 then
-		DoCuff(source, target, true, forced)
-		return
-	end
-	exports['pulsar-hud']:Notification(source, "error", "Nobody Around To Cuff")
-end)
-
-exports('Uncuff', function(source)
-	exports["pulsar-core"]:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
-		if target ~= nil then
-			if Player(target).state.isCuffed then
-				exports['pulsar-police']:UncuffTarget(source, target)
+		plsr.Execute:Client(source, "Notification", "Error", "Nobody Around To Cuff")
+	end,
+	Uncuff = function(self, source)
+		plsr.Callbacks:ClientCallback(source, "HUD:GetTargetInfront", {}, function(target)
+			if target ~= nil then
+				if plsr.State:Player(target).isCuffed then
+					plsr.Handcuffs:UncuffTarget(source, target)
+				else
+					plsr.Execute:Client(source, "Notification", "Error", "Player Is Not Cuffed")
+				end
 			else
-				exports['pulsar-hud']:Notification(source, "error", "Player Is Not Cuffed")
+				plsr.Execute:Client(source, "Notification", "Error", "Nobody To Cuff")
 			end
-		else
-			exports['pulsar-hud']:Notification(source, "error", "Nobody To Cuff")
-		end
-	end)
-end)
-
-exports('UncuffTarget', function(source, target)
-	exports["pulsar-core"]:ClientCallback(target, "Handcuffs:VehCheck", {}, function(inVeh)
-		if not inVeh then
-			if source ~= -1 then
-				TriggerClientEvent("Handcuffs:Client:UncuffingAnim", source)
-				Wait(2200)
+		end)
+	end,
+	UncuffTarget = function(self, source, target)
+		plsr.Callbacks:ClientCallback(target, "Handcuffs:VehCheck", {}, function(inVeh)
+			if not inVeh then
+				if source ~= -1 then
+					TriggerClientEvent("Handcuffs:Client:UncuffingAnim", source)
+					Wait(2200)
+				end
+				plsr.Sounds.Play:Distance(target, 10, "handcuff_remove.ogg", 0.15)
+				local ped = GetPlayerPed(target)
+				FreezeEntityPosition(ped, false)
+				TriggerClientEvent('Handcuffs:Client:SetCuffed', target, false, false)
+				plsr.State:SetPublicFlag(target, 'isCuffed', false)
+				plsr.State:SetPublicFlag(target, 'isHardCuffed', false)
+				SetPedConfigFlag(ped, 120, false)
+				SetPedConfigFlag(ped, 121, false)
+			else
+				if source ~= -1 then
+					plsr.Execute:Client(source, "Notification", "Error", "Unable To Uncuff Player")
+				end
 			end
-			exports["pulsar-sounds"]:PlayDistance(target, 10, "handcuff_remove.ogg", 0.15)
-			local playerState = Player(target).state
-			local ped = GetPlayerPed(target)
-			FreezeEntityPosition(ped, false)
-			playerState.isCuffed = false
-			playerState.isHardCuffed = false
-			SetPedConfigFlag(ped, 120, false)
-			SetPedConfigFlag(ped, 121, false)
-		else
-			if source ~= -1 then
-				exports['pulsar-hud']:Notification(source, "error", "Unable To Uncuff Player")
-			end
-		end
-	end)
-end)
+		end)
+	end,
+}

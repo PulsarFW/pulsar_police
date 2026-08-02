@@ -1,38 +1,40 @@
+local config = load(LoadResourceFile(GetCurrentResourceName(), "config/shared.lua"))()
+
 AddEventHandler("Government:Client:OnDuty", function()
-	exports['pulsar-jobs']:DutyOn("government")
+	plsr.Jobs.Duty:On("government")
 end)
 
 AddEventHandler("Government:Client:OffDuty", function()
-	exports['pulsar-jobs']:DutyOff("government")
+	plsr.Jobs.Duty:Off("government")
 end)
 
 AddEventHandler("Government:Client:BuyID", function()
-	exports["pulsar-core"]:ServerCallback("Government:BuyID")
+	plsr.Callbacks:ServerCallback("Government:BuyID")
 end)
 
 AddEventHandler("Government:Client:DoLicenseBuy", function(license)
-	exports["pulsar-core"]:ServerCallback("Government:BuyLicense", license)
+	plsr.Callbacks:ServerCallback("Government:BuyLicense", license)
 end)
 
 AddEventHandler("Government:Client:DoWeaponsLicenseBuyPolice", function(license)
-	exports["pulsar-core"]:ServerCallback("Government:Client:DoWeaponsLicenseBuyPolice", {})
+	plsr.Callbacks:ServerCallback("Government:Client:DoWeaponsLicenseBuyPolice", {})
 end)
 
 AddEventHandler("Government:Client:BuyLicense", function()
-	local licenses = LocalPlayer.state.Character:GetData("Licenses")
+	local licenses = plsr.State.character.Licenses
 	local items = {}
 
 	if not licenses.Drivers.Active then
 		if not licenses.Drivers.Suspended then
 			table.insert(items, {
-				label = "Drivers License",
-				description = "Renew Drivers License ($1000)",
+				label = config.Licenses.drivers.label,
+				description = string.format("Renew Drivers License ($%s)", config.Licenses.drivers.price),
 				event = "Government:Client:DoLicenseBuy",
 				data = "drivers",
 			})
 		else
 			table.insert(items, {
-				label = "Drivers License",
+				label = config.Licenses.drivers.label,
 				description = "Unable To Renew, License Is Suspended.",
 			})
 		end
@@ -40,24 +42,24 @@ AddEventHandler("Government:Client:BuyLicense", function()
 
 	if not licenses.Weapons.Active then
 		if not licenses.Weapons.Suspended then
-			if LocalPlayer.state.onDuty == 'police' then
+			if plsr.State.flags.onDuty == 'police' then
 				table.insert(items, {
 					label = "Weapons License (Police)",
-					description = "Purchase Weapons License ($20)",
+					description = string.format("Purchase Weapons License ($%s)", config.PoliceWeaponsLicensePrice),
 					event = "Government:Client:DoWeaponsLicenseBuyPolice",
 					data = "weapons_police",
 				})
 			else
 				table.insert(items, {
-					label = "Weapons License",
-					description = "Purchase Weapons License ($2000)",
+					label = config.Licenses.weapons.label,
+					description = string.format("Purchase Weapons License ($%s)", config.Licenses.weapons.price),
 					event = "Government:Client:DoLicenseBuy",
 					data = "weapons",
 				})
 			end
 		else
 			table.insert(items, {
-				label = "Weapons License",
+				label = config.Licenses.weapons.label,
 				description = "Unable To Purchase, License Is Suspended.",
 			})
 		end
@@ -66,14 +68,14 @@ AddEventHandler("Government:Client:BuyLicense", function()
 	if not licenses.Hunting.Active then
 		if not licenses.Hunting.Suspended then
 			table.insert(items, {
-				label = "Hunting License",
-				description = "Purchase Hunting License ($800)",
+				label = config.Licenses.hunting.label,
+				description = string.format("Purchase Hunting License ($%s)", config.Licenses.hunting.price),
 				event = "Government:Client:DoLicenseBuy",
 				data = "hunting",
 			})
 		else
 			table.insert(items, {
-				label = "Hunting License",
+				label = config.Licenses.hunting.label,
 				description = "Unable To Purchase, License Is Suspended.",
 			})
 		end
@@ -82,20 +84,20 @@ AddEventHandler("Government:Client:BuyLicense", function()
 	if not licenses.Fishing.Active then
 		if not licenses.Fishing.Suspended then
 			table.insert(items, {
-				label = "Fishing License",
-				description = "Purchase Fishing License ($800)",
+				label = config.Licenses.fishing.label,
+				description = string.format("Purchase Fishing License ($%s)", config.Licenses.fishing.price),
 				event = "Government:Client:DoLicenseBuy",
 				data = "fishing",
 			})
 		else
 			table.insert(items, {
-				label = "Fishing License",
+				label = config.Licenses.fishing.label,
 				description = "Unable To Purchase, License Is Suspended.",
 			})
 		end
 	end
 
-	exports['pulsar-hud']:ListMenuShow({
+	plsr.ListMenu:Show({
 		main = {
 			label = "Licensing Services",
 			items = items,

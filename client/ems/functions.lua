@@ -3,19 +3,18 @@ RegisterNetEvent("EMS:Client:Test", function(src)
 end)
 
 function BuildTreatmentMenu(id)
-	exports["pulsar-core"]:ServerCallback("Damage:GetLimbDamage", id, function(menu)
+	plsr.Callbacks:ServerCallback("Damage:GetLimbDamage", id, function(menu)
 		local options = {}
 		local ped = GetPlayerPed(GetPlayerFromServerId(tonumber(id)))
 		local needsTreatment = false
-		local targetState = Player(tonumber(id)).state
 
 		table.insert(options, {
 			label = "View Diagnosis",
 			submenu = "view",
 		})
 
-		if targetState.isDead then
-			if exports['pulsar-jobs']:HasJob("ems") then
+		if plsr.State:GetPublicFlag(tonumber(id), 'isDead') then
+			if plsr.Jobs.Permissions:HasJob("ems") then
 				table.insert(options, {
 					label = string.format("Stabilize (Revive)"),
 					description = "Requires Trauma Kit",
@@ -25,7 +24,7 @@ function BuildTreatmentMenu(id)
 				needsTreatment = true
 			end
 		else
-			if exports['pulsar-jobs']:HasJob("ems") then
+			if plsr.Jobs.Permissions:HasJob("ems") then
 				local maxHp = GetEntityMaxHealth(ped) - 100
 				local hp = GetEntityHealth(ped) - 100
 
@@ -58,7 +57,7 @@ function BuildTreatmentMenu(id)
 			})
 		end
 
-		exports['pulsar-hud']:ListMenuShow({
+		plsr.ListMenu:Show({
 			main = {
 				label = "Patient Treatment",
 				items = options,

@@ -1,220 +1,207 @@
-AddEventHandler('onClientResourceStart', function(resource)
-	if resource == GetCurrentResourceName() then
-		Wait(1000)
-		exports['pulsar-hud']:InteractionRegisterMenu("prison", false, "siren-on", function(data)
-			exports['pulsar-hud']:InteractionShowMenu({
+local config = load(LoadResourceFile(GetCurrentResourceName(), "config/shared.lua"))()
+
+CreateThread(function()
+		plsr.Interaction:RegisterMenu("prison", false, "clipboard-list", function(data)
+			plsr.Interaction:ShowMenu({
 				{
-					icon = "siren-on",
+					icon = "clipboard-list",
 					label = "13-A",
 					action = function()
-						exports['pulsar-hud']:InteractionHide()
+						plsr.Interaction:Hide()
 						TriggerServerEvent("Police:Server:Panic", true)
 					end,
 					shouldShow = function()
-						return LocalPlayer.state.isDead
+						return plsr.State.flags.isDead
 					end,
 				},
 				{
 					icon = "siren",
 					label = "13-B",
 					action = function()
-						exports['pulsar-hud']:InteractionHide()
+						plsr.Interaction:Hide()
 						TriggerServerEvent("Police:Server:Panic", false)
 					end,
 					shouldShow = function()
-						return LocalPlayer.state.isDead
+						return plsr.State.flags.isDead
 					end,
 				},
 			})
 		end, function()
-			return LocalPlayer.state.onDuty == "prison" and LocalPlayer.state.isDead
+			return plsr.State.flags.onDuty == "prison" and plsr.State.flags.isDead
 		end)
 
-		local lockdownOptions = {
+		local lockdownMenu = {
 			{
 				icon = "lock",
-				label = "Enable Lockdown",
-				onSelect = function()
-					TriggerEvent("Prison:Client:SetLockdown", { state = true })
-				end,
-				canInteract = function()
+				text = "Enable Lockdown",
+				event = "Prison:Client:SetLockdown",
+				data = { state = true },
+				isEnabled = function()
 					return not GlobalState["PrisonLockdown"]
-						and (LocalPlayer.state.onDuty == "police" or LocalPlayer.state.onDuty == "prison")
+						and (plsr.State.flags.onDuty == "police" or plsr.State.flags.onDuty == "prison")
 				end,
 			},
 			{
 				icon = "lock-open",
-				label = "Disable Lockdown",
-				onSelect = function()
-					TriggerEvent("Prison:Client:SetLockdown", { state = false })
-				end,
-				canInteract = function()
+				text = "Disable Lockdown",
+				event = "Prison:Client:SetLockdown",
+				data = { state = false },
+				isEnabled = function()
 					return GlobalState["PrisonLockdown"]
-						and (LocalPlayer.state.onDuty == "police" or LocalPlayer.state.onDuty == "prison")
+						and (plsr.State.flags.onDuty == "police" or plsr.State.flags.onDuty == "prison")
 				end,
 			},
 		}
 
-		for _, zone in ipairs(Config.PrisonLockdownZones) do
-			exports.ox_target:addBoxZone({
-				id       = zone.id,
-				coords   = zone.coords,
-				size     = zone.size,
-				rotation = zone.rotation,
-				debug    = false,
-				minZ     = zone.minZ,
-				maxZ     = zone.maxZ,
-				options  = lockdownOptions,
-			})
+		for k, v in ipairs(config.Prison.LockdownZones) do
+			plsr.Targeting.Zones:AddBox(v.id, "door-closed", v.coords, v.length, v.width, v.options, lockdownMenu, 3.0, true)
 		end
 
-		local cellDoors = Config.PrisonCellDoorsZone
-		exports.ox_target:addBoxZone({
-			id       = cellDoors.id,
-			coords   = cellDoors.coords,
-			size     = cellDoors.size,
-			rotation = cellDoors.rotation,
-			debug    = false,
-			minZ     = cellDoors.minZ,
-			maxZ     = cellDoors.maxZ,
-			options  = {
+		local cellDoors = config.Prison.CellDoorZone
+		plsr.Targeting.Zones:AddBox("prison-doors-lockup", "door-closed", cellDoors.coords, cellDoors.length, cellDoors.width, cellDoors.options, {
+			{
+				icon = "lock",
+				text = "Lock Cell Doors",
+				event = "Prison:Client:SetCellState",
+				data = { state = true },
+				isEnabled = function()
+					return not GlobalState["PrisonCellsLocked"]
+						and not GlobalState["PrisonLockdown"]
+						and (plsr.State.flags.onDuty == "police" or plsr.State.flags.onDuty == "prison")
+				end,
+			},
+			{
+				icon = "lock-open",
+				text = "Unlock Cell Doors",
+				event = "Prison:Client:SetCellState",
+				data = { state = false },
+				isEnabled = function()
+					return GlobalState["PrisonCellsLocked"]
+						and (plsr.State.flags.onDuty == "police" or plsr.State.flags.onDuty == "prison")
+				end,
+			},
+		}, 3.0, true)
+
+		plsr.Interaction:RegisterMenu("prison-utils", "Corrections Utilities", "tablet-rugged", function(data)
+			plsr.Interaction:ShowMenu({
 				{
-					icon = "lock",
-					label = "Lock Cell Doors",
-					onSelect = function()
-						TriggerEvent("Prison:Client:SetCellState", { state = true })
+					icon = "lock-keyhole-open",
+					label = "Slimjim Vehicle",
+					action = function()
+						plsr.Interaction:Hide()
+						TriggerServerEvent("Police:Server:Slimjim")
 					end,
-					canInteract = function()
-						return not GlobalState["PrisonCellsLocked"]
-							and not GlobalState["PrisonLockdown"]
-							and (LocalPlayer.state.onDuty == "police" or LocalPlayer.state.onDuty == "prison")
+					shouldShow = function()
+						local target = plsr.Targeting:GetEntityPlayerIsLookingAt()
+						return target
+							and target.entity
+							and DoesEntityExist(target.entity)
+							and IsEntityAVehicle(target.entity)
+							and #(GetEntityCoords(target.entity) - GetEntityCoords(PlayerPedId())) <= 2.0
 					end,
 				},
 				{
-					icon = "lock-open",
-					label = "Unlock Cell Doors",
-					onSelect = function()
-						TriggerEvent("Prison:Client:SetCellState", { state = false })
+					icon = "tablet-screen-button",
+					label = "MDT",
+					action = function()
+						plsr.Interaction:Hide()
+						TriggerEvent("MDT:Client:Toggle")
 					end,
-					canInteract = function()
-						return GlobalState["PrisonCellsLocked"]
-							and (LocalPlayer.state.onDuty == "police" or LocalPlayer.state.onDuty == "prison")
+					shouldShow = function()
+						return plsr.State.flags.onDuty == "prison"
 					end,
 				},
-			},
-		})
+				{
+					icon = "camera-security",
+					label = "Toggle Body Cam",
+					action = function()
+						plsr.Interaction:Hide()
+						TriggerEvent("MDT:Client:ToggleBodyCam")
+					end,
+					shouldShow = function()
+						return plsr.State.flags.onDuty == "prison"
+					end,
+				},
+			})
+		end, function()
+			return plsr.State.flags.onDuty == "prison"
+		end)
 
-		exports['pulsar-hud']:InteractionRegisterMenu("prison-utils", "Corrections Utilities", "tablet-rugged",
-			function(data)
-				exports['pulsar-hud']:InteractionShowMenu({
+		local prisonDutyPoint = {
+			{
+				icon = "clipboard-list",
+				text = "Go On Duty",
+				event = "Corrections:Client:OnDuty",
+				jobPerms = {
 					{
-						icon = "lock-open",
-						label = "Slimjim Vehicle",
-						action = function()
-							exports['pulsar-hud']:InteractionHide()
-							TriggerServerEvent("Police:Server:Slimjim")
-						end,
-						shouldShow = function()
-							local target = lib.getClosestVehicle(GetEntityCoords(cache.ped), 2.0, false)
-
-							if not target or not DoesEntityExist(target) then
-								return false
-							end
-
-							return IsEntityAVehicle(target)
-						end,
+						job = "prison",
+						reqOffDuty = true,
 					},
+				},
+			},
+			{
+				icon = "clipboard-list",
+				text = "Go Off Duty",
+				event = "Corrections:Client:OffDuty",
+				jobPerms = {
 					{
-						icon = "tablet-screen-button",
-						label = "MDT",
-						action = function()
-							exports['pulsar-hud']:InteractionHide()
-							TriggerEvent("MDT:Client:Toggle")
-						end,
-						shouldShow = function()
-							return LocalPlayer.state.onDuty == "prison"
-						end,
+						job = "prison",
+						reqDuty = true,
 					},
+				},
+			},
+			{
+				icon = "clipboard-list",
+				text = "Go On Duty (Medical)",
+				event = "EMS:Client:OnDuty",
+				jobPerms = {
 					{
-						icon = "video",
-						label = "Toggle Body Cam",
-						action = function()
-							exports['pulsar-hud']:InteractionHide()
-							TriggerEvent("MDT:Client:ToggleBodyCam")
-						end,
-						shouldShow = function()
-							return LocalPlayer.state.onDuty == "prison"
-						end,
+						job = "ems",
+						workplace = "prison",
+						reqOffDuty = true,
 					},
-				})
-			end, function()
-				return LocalPlayer.state.onDuty == "prison"
-			end)
-
-		local prisonDutyOptions = {
-			{
-				icon      = "fas fa-clipboard-check",
-				label     = "Go On Duty",
-				event     = "Corrections:Client:OnDuty",
-				groups    = { "prison" },
-				reqOffDuty = true,
+				},
 			},
 			{
-				icon    = "fas fa-clipboard",
-				label   = "Go Off Duty",
-				event   = "Corrections:Client:OffDuty",
-				groups  = { "prison" },
-				reqDuty = true,
-			},
-			{
-				icon      = "fas fa-clipboard-check",
-				label     = "Go On Duty (Medical)",
-				event     = "EMS:Client:OnDuty",
-				groups    = { "ems" },
-				reqOffDuty = true,
-			},
-			{
-				icon    = "fas fa-clipboard",
-				label   = "Go Off Duty (Medical)",
-				event   = "EMS:Client:OffDuty",
-				groups  = { "ems" },
-				reqDuty = true,
+				icon = "clipboard-list",
+				text = "Go Off Duty (Medical)",
+				event = "EMS:Client:OffDuty",
+				jobPerms = {
+					{
+						job = "ems",
+						workplace = "prison",
+						reqDuty = true,
+					},
+				},
 			},
 		}
 
-		for _, zone in ipairs(Config.PrisonDutyZones) do
-			exports.ox_target:addBoxZone({
-				id       = zone.id,
-				coords   = zone.coords,
-				size     = zone.size,
-				rotation = zone.rotation,
-				debug    = false,
-				minZ     = zone.minZ,
-				maxZ     = zone.maxZ,
-				options  = prisonDutyOptions,
-			})
+		for k, v in ipairs(config.ClockInPoints.prison) do
+			plsr.Targeting.Zones:AddBox(v.id, "clipboard", v.coords, v.length, v.width, v.options, prisonDutyPoint, 2.0, true)
 		end
 
-		local locker = Config.PrisonLockerZone
-		exports.ox_target:addBoxZone({
-			id       = locker.id,
-			coords   = locker.coords,
-			size     = locker.size,
-			rotation = locker.rotation,
-			debug    = false,
-			minZ     = locker.minZ,
-			maxZ     = locker.maxZ,
-			options  = {
-				{
-					icon    = "fas fa-user-lock",
-					label   = "Open Personal Locker",
-					event   = "Police:Client:OpenLocker",
-					groups  = { "prison", "ems" },
-					reqDuty = true,
+		local locker = {
+			{
+				icon = "user-lock",
+				text = "Open Personal Locker",
+				event = "Police:Client:OpenLocker",
+				jobPerms = {
+					{
+						job = "prison",
+						reqDuty = false,
+					},
+					{
+						job = "ems",
+						workplace = "prison",
+						reqDuty = true,
+					},
 				},
 			},
-		})
-	end
+		}
+
+		for k, v in ipairs(config.Lockers.prison) do
+			plsr.Targeting.Zones:AddBox(v.id, "clipboard-list", v.coords, v.length, v.width, v.options, locker, 3.0, true)
+		end
 end)
 
 _PROGRESS_LOCKDOWN = false
@@ -222,21 +209,21 @@ _PROGRESS_LOCKDOWN = false
 AddEventHandler("Prison:Client:SetLockdown", function(entity, data)
 	if not _PROGRESS_LOCKDOWN then
 		_PROGRESS_LOCKDOWN = true
-		exports["pulsar-core"]:ServerCallback("Prison:SetLockdown", data.state, function(success, state)
+		plsr.Callbacks:ServerCallback("Prison:SetLockdown", data.state, function(success, state)
 			if success then
 				if state then
-					exports["pulsar-hud"]:Notification("success", "Lockdown Initiated")
+					plsr.Notification:Success("Lockdown Initiated")
 					TriggerServerEvent("Prison:Server:Lockdown:AlertPolice", state)
 				else
-					exports["pulsar-hud"]:Notification("success", "Lockdown Disabled")
+					plsr.Notification:Success("Lockdown Disabled")
 					TriggerServerEvent("Prison:Server:Lockdown:AlertPolice", state)
 				end
 
-				SetTimeout(5000, function()
+				Citizen.SetTimeout(5000, function()
 					_PROGRESS_LOCKDOWN = false
 				end)
 			else
-				exports["pulsar-hud"]:Notification("success", "Unauthorized!")
+				plsr.Notification:Success("Unauthorized!")
 			end
 		end)
 	end
@@ -247,20 +234,20 @@ _PROGRESS_DOORS = false
 AddEventHandler("Prison:Client:SetCellState", function(entity, data)
 	if not _PROGRESS_DOORS then
 		_PROGRESS_DOORS = true
-		exports["pulsar-core"]:ServerCallback("Prison:SetCellState", data.state, function(success, state)
+		plsr.Callbacks:ServerCallback("Prison:SetCellState", data.state, function(success, state)
 			if success then
 				if state then
-					exports["pulsar-hud"]:Notification("success", "Cell Doors Locked")
+					plsr.Notification:Success("Cell Doors Locked")
 				else
-					exports["pulsar-hud"]:Notification("success", "Cell Doors Unlocked")
+					plsr.Notification:Success("Cell Doors Unlocked")
 				end
 
 				-- TriggerEvent("Prison:Client:JailAlarm", data.state)
-				SetTimeout(5000, function()
+				Citizen.SetTimeout(5000, function()
 					_PROGRESS_DOORS = false
 				end)
 			else
-				exports["pulsar-hud"]:Notification("success", "Unauthorized!")
+				plsr.Notification:Success("Unauthorized!")
 			end
 		end)
 	end

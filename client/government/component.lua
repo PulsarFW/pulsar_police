@@ -1,131 +1,122 @@
-local govDutyPoints = Config.GovDutyZones
+local config = load(LoadResourceFile(GetCurrentResourceName(), "config/shared.lua"))()
 
-AddEventHandler('onClientResourceStart', function(resource)
-	if resource == GetCurrentResourceName() then
-		Wait(1000)
-		local govServices = {
+CreateThread(function()
+	local govServices = {
+		{
+			icon = "id-card",
+			text = string.format("Purchase ID ($%s)", config.GovIdPrice),
+			event = "Government:Client:BuyID",
+		},
+		{
+			icon = "file-certificate",
+			text = "License Services",
+			event = "Government:Client:BuyLicense",
+		},
+		{
+			icon = "gavel",
+			text = "Public Records",
+			event = "Government:Client:AccessPublicRecords",
+		},
+		{
+			icon = "clipboard-list",
+			text = "Go On Duty",
+			event = "Government:Client:OnDuty",
+			jobPerms = {
+				{
+					job = "government",
+					reqOffDuty = true,
+				},
+			},
+		},
+		{
+			icon = "clipboard",
+			text = "Go Off Duty",
+			event = "Government:Client:OffDuty",
+			jobPerms = {
+				{
+					job = "government",
+					reqDuty = true,
+				},
+			},
+		},
+		{
+			icon = "shop-lock",
+			text = "DOJ Shop",
+			event = "Government:Client:DOJShop",
+			jobPerms = {
+				{
+					job = "government",
+					workplace = "doj",
+					reqDuty = true,
+				},
+			},
+		},
+	}
+
+	plsr.PedInteraction:Add(
+		"govt-services",
+		`a_f_m_eastsa_02`,
+		config.GovtServicesNpc.coords,
+		config.GovtServicesNpc.heading,
+		config.GovtServicesNpc.dist,
+		govServices,
+		"bell-concierge"
+	)
+
+	for k, v in ipairs(config.ClockInPoints.government) do
+		plsr.Targeting.Zones:AddBox("gov-info-" .. k, "gavel", v.coords, v.length, v.width, v.options, {
 			{
-				icon = "fas fa-id-card",
-				text = "Purchase ID ($500)",
-				event = "Government:Client:BuyID",
+				icon = "clipboard-list",
+				text = "Go On Duty",
+				event = "Government:Client:OnDuty",
+				jobPerms = {
+					{
+						job = "government",
+						reqOffDuty = true,
+					},
+				},
 			},
 			{
-				icon = "fas fa-id-badge",
-				text = "License Services",
-				event = "Government:Client:BuyLicense",
+				icon = "clipboard",
+				text = "Go Off Duty",
+				event = "Government:Client:OffDuty",
+				jobPerms = {
+					{
+						job = "government",
+						reqDuty = true,
+					},
+				},
 			},
 			{
-				icon = "fas fa-gavel",
+				icon = "gavel",
 				text = "Public Records",
 				event = "Government:Client:AccessPublicRecords",
 			},
-			{
-				icon = "fas fa-clipboard-check",
-				text = "Go On Duty",
-				event = "Government:Client:OnDuty",
-				groups = { "government" },
-				reqOffDuty = true,
-			},
-			{
-				icon = "fas fa-clipboard",
-				text = "Go Off Duty",
-				event = "Government:Client:OffDuty",
-				groups = { "government" },
-				reqDuty = true,
-			},
-			{
-				icon = "fas fa-shop-lock",
-				text = "DOJ Shop",
-				event = "Government:Client:DOJShop",
-				groups = { "government" },
-				workplace = "doj",
-				reqDuty = true,
-			},
-		}
-
-		local p = Config.GovServicesPed
-		exports['pulsar-pedinteraction']:Add(
-			"govt-services",
-			p.model,
-			p.coords,
-			p.heading,
-			25.0,
-			govServices,
-			"bell-concierge"
-		)
-		-- exports.ox_target:addBoxZone({
-		--     id = "govt-services",
-		--     coords = vector3(-555.92, -186.01, 38.22),
-		--     size = vector3(2.0, 2.0, 2.0),
-		--     rotation = 28,
-		--     debug = false,
-		--     minZ = 37.22,
-		--     maxZ = 39.62,
-		--     options = govServices
-		-- })
-
-		for _, v in ipairs(govDutyPoints) do
-			exports.ox_target:addBoxZone({
-				id       = v.id,
-				coords   = v.coords,
-				size     = v.size,
-				rotation = v.rotation,
-				debug    = false,
-				minZ     = v.minZ,
-				maxZ     = v.maxZ,
-				options = {
-					{
-						icon = "fas fa-clipboard-check",
-						label = "Go On Duty",
-						event = "Government:Client:OnDuty",
-						groups = { "government" },
-						reqDuty = false,
-					},
-					{
-						icon = "fas fa-clipboard",
-						label = "Go Off Duty",
-						event = "Government:Client:OffDuty",
-						groups = { "government" },
-						reqDuty = true,
-					},
-					{
-						icon = "fas fa-gavel",
-						label = "Public Records",
-						event = "Government:Client:AccessPublicRecords",
-					},
-				}
-			})
-		end
-
-		exports['pulsar-polyzone']:CreateBox("courtroom", vector3(-571.17, -207.02, 38.77), 18.2, 19.6, {
-			heading = 30,
-			--debugPoly=true,
-			minZ = 36.97,
-			maxZ = 47.37,
-		}, {})
-
-		local gavel = Config.CourthouseGavel
-		exports.ox_target:addBoxZone({
-			id       = "court-gavel",
-			coords   = gavel.coords,
-			size     = gavel.size,
-			rotation = gavel.rotation,
-			debug    = false,
-			minZ     = gavel.minZ,
-			maxZ     = gavel.maxZ,
-			options  = {
-				{
-					icon  = "fas fa-gavel",
-					label = "Use Gavel",
-					event = "Government:Client:UseGavel",
-				},
-			}
-		})
+		}, 3.0, true)
 	end
+
+	local courtZone = config.Courthouse.zone
+	plsr.Polyzone.Create:Box("courtroom", courtZone.coords, courtZone.length, courtZone.width, courtZone.options, {})
+
+	local gavelZone = config.Courthouse.gavel
+	plsr.Targeting.Zones:AddBox("court-gavel", "gavel", gavelZone.coords, gavelZone.length, gavelZone.width, gavelZone.options, {
+		{
+			icon = "gavel",
+			text = "Use Gavel",
+			event = "Government:Client:UseGavel",
+			-- jobPerms = {
+			--     {
+			--         job = 'government',
+			--         reqDuty = true,
+			--     }
+			-- },
+		},
+	}, 3.0, true)
 end)
 
 RegisterNetEvent("Characters:Client:Spawn", function()
-	exports["pulsar-blips"]:Add("courthouse", "Courthouse", Config.CourthouseBlip, 419, 0, 0.9)
+	local courthouseBlip = config.Courthouse.blip
+	plsr.Blips:Add("courthouse", "Courthouse", courthouseBlip.coords, courthouseBlip.sprite, courthouseBlip.colour, courthouseBlip.scale)
 end)
 
 AddEventHandler("Government:Client:UseGavel", function()
@@ -133,15 +124,15 @@ AddEventHandler("Government:Client:UseGavel", function()
 end)
 
 RegisterNetEvent("Government:Client:Gavel", function()
-	if not LocalPlayer.state.loggedIn then
+	if not plsr.State.flags.loggedIn then
 		return
 	end
-	local coords = GetEntityCoords(LocalPlayer.state.ped)
-	if exports['pulsar-polyzone']:IsCoordsInZone(coords, "courtroom") then
-		exports["pulsar-sounds"]:PlayOne("gavel.ogg", 0.6)
+	local coords = GetEntityCoords(PlayerPedId())
+	if plsr.Polyzone:IsCoordsInZone(coords, "courtroom") then
+		plsr.Sounds.Play:One("gavel.ogg", 0.6)
 	end
 end)
 
 AddEventHandler("Government:Client:DOJShop", function()
-	exports.ox_inventory:ShopOpen("doj-shop")
+	plsr.Inventory.Shop:Open("doj-shop")
 end)

@@ -6,13 +6,18 @@
 
 # PULSAR-POLICE
 
-### Law enforcement tools and police job system
+### Law enforcement & emergency services — police, EMS, handcuffs, government, and prison cells
 
 <br/>
 
 ![Lua](https://img.shields.io/badge/Lua_5.4-2C2D72?style=flat-square&logo=lua&logoColor=white)
 ![FiveM](https://img.shields.io/badge/FiveM-F40552?style=flat-square)
-![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=flat-square&logo=mariadb)
+
+<br/>
+
+<sub>Enjoy the framework? A coffee helps keep active development, hardening, and support going.</sub>
+
+<a href="https://buymeacoffee.com/pulsarframework"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px !important;width: 180px !important;" /></a>
 
 <br/>
 
@@ -24,21 +29,22 @@
 
 ## Overview
 
-Police job system for Pulsar Framework. Covers law enforcement tools including cuffing, evidence collection, vehicle impounding, spike strips, speed radar, armory access, and duty management.
+Registers four components: `plsr.Police`, `plsr.EMS`, `plsr.Handcuffs`, and `plsr.Government`, each with its own client/server folder. Also holds shared armory/cuff-item config and prison cell data used by `pulsar_jail`.
 
 ---
 
 ## Dependencies
 
-- `pulsar-core` — framework core
-- `pulsar-jobs` — police job definition
-- `ox_inventory` — equipment and evidence item handling
+- `pulsar_core` — framework core
+- `pulsar_jobs` — job/duty gating for all four job-adjacent components
+- `pulsar_mdt` — the primary consumer of records this resource's data feeds
+- `pulsar_pwnzor` — anti-cheat check loaded alongside every resource
 
 ---
 
 ## License
 
-This resource is proprietary software. All rights reserved by the Pulsar Framework team. Unauthorized distribution or resale is prohibited.
+This resource is free to use and modify under the [Pulsar Framework License](LICENSE.md). Redistribution is welcome as long as it stays free — selling this resource or any derivative of it requires written permission from the Pulsar Framework team.
 
 ---
 

@@ -2,22 +2,23 @@ local _911Cds = {}
 local _311Cds = {}
 
 function RegisterCommands()
-	exports["pulsar-chat"]:RegisterCommand("911", function(source, args, rawCommand)
+	plsr.Chat:RegisterCommand("911", function(source, args, rawCommand)
 		if #rawCommand:sub(4) > 0 then
+			local char = plsr.Fetch:CharacterSource(source)
 			if
-				not Player(source).state.isCuffed
-				and not Player(source).state.isDead
-				and (Player(source).state.ItemStates and Player(source).state.ItemStates.PHONE)
+				not plsr.State:Player(source).isCuffed
+				and not plsr.State:Player(source).isDead
+				and hasValue(char:GetData("States"), "PHONE")
 			then
 				if _911Cds[source] == nil or os.time() >= _911Cds[source] then
-					exports["pulsar-chat"]:SendEmergency(source, rawCommand:sub(4))
+					plsr.Chat.Send.Services:Emergency(source, rawCommand:sub(4))
 					_911Cds[source] = os.time() + (60 * 1)
 					TriggerClientEvent("Animations:Client:DoPDCallEmote", source)
 				else
-					exports["pulsar-chat"]:SendSystemSingle(source, "You've Called 911 Recently")
+					plsr.Chat.Send.System:Single(source, "You've Called 911 Recently")
 				end
 			else
-				exports["pulsar-chat"]:SendSystemSingle(source, "You Find It Difficult To Call 911")
+				plsr.Chat.Send.System:Single(source, "You Find It Difficult To Call 911")
 			end
 		end
 	end, {
@@ -30,22 +31,23 @@ function RegisterCommands()
 		},
 	}, -1)
 
-	exports["pulsar-chat"]:RegisterCommand("911a", function(source, args, rawCommand)
+	plsr.Chat:RegisterCommand("911a", function(source, args, rawCommand)
 		if #rawCommand:sub(5) > 0 then
+			local char = plsr.Fetch:CharacterSource(source)
 			if
-				not Player(source).state.isCuffed
-				and not Player(source).state.isDead
-				and (Player(source).state.ItemStates and Player(source).state.ItemStates.PHONE)
+				not plsr.State:Player(source).isCuffed
+				and not plsr.State:Player(source).isDead
+				and hasValue(char:GetData("States"), "PHONE")
 			then
 				if _911Cds[source] == nil or os.time() >= _911Cds[source] then
-					exports["pulsar-chat"]:SendEmergencyAnonymous(source, rawCommand:sub(5))
+					plsr.Chat.Send.Services:EmergencyAnonymous(source, rawCommand:sub(5))
 					_911Cds[source] = os.time() + (60 * 1)
 					TriggerClientEvent("Animations:Client:DoPDCallEmote", source)
 				else
-					exports["pulsar-chat"]:SendSystemSingle(source, "You've Called 911 Recently")
+					plsr.Chat.Send.System:Single(source, "You've Called 911 Recently")
 				end
 			else
-				exports["pulsar-chat"]:SendSystemSingle(source, "You Find It Difficult To Call 911")
+				plsr.Chat.Send.System:Single(source, "You Find It Difficult To Call 911")
 			end
 		end
 	end, {
@@ -58,22 +60,23 @@ function RegisterCommands()
 		},
 	}, -1)
 
-	exports["pulsar-chat"]:RegisterCommand(
+	plsr.Chat:RegisterCommand(
 		"911r",
 		function(source, args, rawCommand)
 			if tonumber(args[1]) then
-				local target = exports['pulsar-characters']:FetchBySID(tonumber(args[1]))
-				if not (Player(source).state.ItemStates and Player(source).state.ItemStates.PHONE) then
-					exports["pulsar-chat"]:SendSystemSingle(source, "You Find It Difficult Replying to 911")
+				local target = plsr.Fetch:SID(tonumber(args[1]))
+				local char = plsr.Fetch:CharacterSource(source)
+				if not hasValue(char:GetData("States"), "PHONE") then
+					plsr.Chat.Send.System:Single(source, "You Find It Difficult Replying to 911")
 					return
 				end
 				if target ~= nil then
-					exports["pulsar-chat"]:SendEmergencyRespond(source, target:GetData("Source"), args[2])
+					plsr.Chat.Send.Services:EmergencyRespond(source, target:GetData("Source"), args[2])
 				else
-					exports["pulsar-chat"]:SendSystemSingle(source, "Invalid Target 2")
+					plsr.Chat.Send.System:Single(source, "Invalid Target 2")
 				end
 			else
-				exports["pulsar-chat"]:SendSystemSingle(source, "Invalid Target 1")
+				plsr.Chat.Send.System:Single(source, "Invalid Target 1")
 			end
 		end,
 		{
@@ -100,22 +103,23 @@ function RegisterCommands()
 		}
 	)
 
-	exports["pulsar-chat"]:RegisterCommand("311", function(source, args, rawCommand)
+	plsr.Chat:RegisterCommand("311", function(source, args, rawCommand)
 		if #rawCommand:sub(4) > 0 then
+			local char = plsr.Fetch:CharacterSource(source)
 			if
-				not Player(source).state.isCuffed
-				and not Player(source).state.isDead
-				and (Player(source).state.ItemStates and Player(source).state.ItemStates.PHONE)
+				not plsr.State:Player(source).isCuffed
+				and not plsr.State:Player(source).isDead
+				and hasValue(char:GetData("States"), "PHONE")
 			then
 				if _311Cds[source] == nil or os.time() >= _311Cds[source] then
-					exports["pulsar-chat"]:SendNonEmergency(source, rawCommand:sub(4))
+					plsr.Chat.Send.Services:NonEmergency(source, rawCommand:sub(4))
 					_311Cds[source] = os.time() + (60 * 1)
 					TriggerClientEvent("Animations:Client:DoPDCallEmote", source)
 				else
-					exports["pulsar-chat"]:SendSystemSingle(source, "You've Called 311 Recently")
+					plsr.Chat.Send.System:Single(source, "You've Called 311 Recently")
 				end
 			else
-				exports["pulsar-chat"]:SendSystemSingle(source, "You Find It Difficult To Call 311")
+				plsr.Chat.Send.System:Single(source, "You Find It Difficult To Call 311")
 			end
 		end
 	end, {
@@ -128,22 +132,23 @@ function RegisterCommands()
 		},
 	}, -1)
 
-	exports["pulsar-chat"]:RegisterCommand("311a", function(source, args, rawCommand)
+	plsr.Chat:RegisterCommand("311a", function(source, args, rawCommand)
 		if #rawCommand:sub(5) > 0 then
+			local char = plsr.Fetch:CharacterSource(source)
 			if
-				not Player(source).state.isCuffed
-				and not Player(source).state.isDead
-				and (Player(source).state.ItemStates and Player(source).state.ItemStates.PHONE)
+				not plsr.State:Player(source).isCuffed
+				and not plsr.State:Player(source).isDead
+				and hasValue(char:GetData("States"), "PHONE")
 			then
 				if _311Cds[source] == nil or os.time() >= _311Cds[source] then
-					exports["pulsar-chat"]:SendNonEmergencyAnonymous(source, rawCommand:sub(5))
+					plsr.Chat.Send.Services:NonEmergencyAnonymous(source, rawCommand:sub(5))
 					_311Cds[source] = os.time() + (60 * 1)
 					TriggerClientEvent("Animations:Client:DoPDCallEmote", source)
 				else
-					exports["pulsar-chat"]:SendSystemSingle(source, "You've Called 311 Recently")
+					plsr.Chat.Send.System:Single(source, "You've Called 311 Recently")
 				end
 			else
-				exports["pulsar-chat"]:SendSystemSingle(source, "You Find It Difficult To Call 311")
+				plsr.Chat.Send.System:Single(source, "You Find It Difficult To Call 311")
 			end
 		end
 	end, {
@@ -156,7 +161,7 @@ function RegisterCommands()
 		},
 	}, -1)
 
-	exports["pulsar-chat"]:RegisterAdminCommand("testanim", function(source, args, rawCommand)
+	plsr.Chat:RegisterAdminCommand("testanim", function(source, args, rawCommand)
 		TriggerClientEvent("Test:Animation", source, args[1], args[2])
 	end, {
 		help = "Test",
@@ -172,28 +177,29 @@ function RegisterCommands()
 		},
 	}, 2)
 
-	exports["pulsar-chat"]:RegisterAdminCommand("tems", function(source, args, rawCommand)
+	plsr.Chat:RegisterAdminCommand("tems", function(source, args, rawCommand)
 		TriggerClientEvent("EMS:Client:Test", source, source)
 	end, {
 		help = "Test",
 	}, -1)
 
-	exports["pulsar-chat"]:RegisterCommand(
+	plsr.Chat:RegisterCommand(
 		"311r",
 		function(source, args, rawCommand)
 			if tonumber(args[1]) then
-				local target = exports['pulsar-characters']:FetchBySID(tonumber(args[1]))
-				if not (Player(source).state.ItemStates and Player(source).state.ItemStates.PHONE) then
-					exports["pulsar-chat"]:SendSystemSingle(source, "You Find It Difficult Replying to 311")
+				local target = plsr.Fetch:SID(tonumber(args[1]))
+				local char = plsr.Fetch:CharacterSource(source)
+				if not hasValue(char:GetData("States"), "PHONE") then
+					plsr.Chat.Send.System:Single(source, "You Find It Difficult Replying to 311")
 					return
 				end
 				if target ~= nil then
-					exports["pulsar-chat"]:SendNonEmergencyRespond(source, target:GetData("Source"), args[2])
+					plsr.Chat.Send.Services:NonEmergencyRespond(source, target:GetData("Source"), args[2])
 				else
-					exports["pulsar-chat"]:SendSystemSingle(source, "Invalid Target 2")
+					plsr.Chat.Send.System:Single(source, "Invalid Target 2")
 				end
 			else
-				exports["pulsar-chat"]:SendSystemSingle(source, "Invalid Target 1")
+				plsr.Chat.Send.System:Single(source, "Invalid Target 1")
 			end
 		end,
 		{

@@ -1,26 +1,33 @@
-name("Pulsar Framework Emergency Services")
-author("[Alzar]")
-lua54("yes")
-fx_version("cerulean")
-game("gta5")
+fx_version 'cerulean'
+game 'gta5'
 
-version '1.0.7'
-repository("https://www.github.com/PulsarFW/pulsar-police")
+name 'Pulsar Police'
+description 'Law enforcement and emergency services'
+author 'Artmines - maintained for Pulsar Framework'
+url 'https://pulsarframe.work'
+version 'v1.0.0'
 
-client_script("@pulsar-core/exports/cl_error.lua")
-client_script("@pulsar-pwnzor/client/check.lua")
+version_check 'yes'
+github 'https://github.com/PulsarFW/pulsar_police'
+
+client_script '@pulsar_core/components/cl_error.lua'
+shared_script '@pulsar_core/core/sh_pulsar.lua'
+client_script '@pulsar_pwnzor/client/check.lua'
 
 client_scripts({
-  "client/**/*.lua",
+	'client/**/*.lua',
+})
+
+shared_scripts({
+	'shared/**/*.lua',
 })
 
 server_scripts({
-  '@oxmysql/lib/MySQL.lua',
-  "server/**/*.lua",
+	'server/**/*.lua',
 })
 
-
-shared_scripts({
-  "@ox_lib/init.lua",
-  "shared/**/*.lua",
+files({
+	'config/shared.lua',
 })
+
+lua54 'yes'

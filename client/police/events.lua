@@ -10,45 +10,43 @@ RegisterNetEvent("Test:Animation", function(dict, anim)
 		Wait(0)
 	end
 
-	TaskPlayAnim(LocalPlayer.state.ped, dict, anim, 8.0, -8, -1, 16, 0, 0, 0, 0)
+	TaskPlayAnim(PlayerPedId(), dict, anim, 8.0, -8, -1, 16, 0, 0, 0, 0)
 end)
 
 AddEventHandler("Police:Client:ReEnableTracker", function()
-	if not LocalPlayer.state.trackerDisabled then
+	if not plsr.State.flags.trackerDisabled then
 		return
 	end
 
-	exports["pulsar-core"]:ServerCallback("EmergencyAlerts:EnablePDTracker", {}, function(success)
+	plsr.Callbacks:ServerCallback("EmergencyAlerts:EnablePDTracker", {}, function(success)
 		if success then
-			exports["pulsar-hud"]:Notification("success", "Tracker Re-Enabled")
+			plsr.Notification:Success("Tracker Re-Enabled")
 		else
-			exports["pulsar-hud"]:Notification("error", "Failed to Re-Enable Tracker")
+			plsr.Notification:Error("Failed to Re-Enable Tracker")
 		end
 	end)
 end)
 
 AddEventHandler("Police:Client:OnDuty", function()
-	if not LocalPlayer.state.Character:GetData("Callsign") then
-		exports["pulsar-hud"]:Notification("error", "Callsign Not Set, Unable To Go On Duty")
+	if not plsr.State.character.Callsign then
+		plsr.Notification:Error("Callsign Not Set, Unable To Go On Duty")
 		return
 	end
 
-	local susp = LocalPlayer.state.Character:GetData("MDTSuspension")
+	local susp = plsr.State.character.MDTSuspension
 	if susp and susp.police and susp.police.Expires > GetCloudTimeAsInt() then
 		local tr = GetFormattedTimeFromSeconds(susp.police.Expires - GetCloudTimeAsInt())
-		exports["pulsar-hud"]:Notification("error",
-			string.format("You Have Been Suspended (%s Remaining), Unable To Go On Duty",
-				tr))
+		plsr.Notification:Error(string.format("You Have Been Suspended (%s Remaining), Unable To Go On Duty", tr))
 		return
 	end
 
 	StatSetInt(`MP0_STAMINA`, 35, true)
-	exports['pulsar-jobs']:DutyOn("police")
+	plsr.Jobs.Duty:On("police")
 end)
 
 AddEventHandler("Police:Client:OffDuty", function()
 	StatSetInt(`MP0_STAMINA`, 25, true)
-	exports['pulsar-jobs']:DutyOff("police")
+	plsr.Jobs.Duty:Off("police")
 end)
 
 RegisterNetEvent("Job:Client:DutyChanged", function(state, job)
@@ -58,28 +56,28 @@ RegisterNetEvent("Job:Client:DutyChanged", function(state, job)
 end)
 
 AddEventHandler("Corrections:Client:OnDuty", function()
-	exports['pulsar-jobs']:DutyOn("prison")
+	plsr.Jobs.Duty:On("prison")
 end)
 
 AddEventHandler("Corrections:Client:OffDuty", function()
-	exports['pulsar-jobs']:DutyOff("prison")
+	plsr.Jobs.Duty:Off("prison")
 end)
 
-RegisterNetEvent("Police:Client:Search", function(data)
-	exports.ox_inventory:SearchCharacter(data.serverId)
-	while not LocalPlayer.state.inventoryOpen do
+RegisterNetEvent("Police:Client:Search", function(hitting, data)
+	plsr.Inventory.Search:Character(hitting.serverId)
+	while not plsr.State.flags.inventoryOpen do
 		Wait(1)
 	end
 
 	CreateThread(function()
-		while LocalPlayer.state.inventoryOpen do
+		while plsr.State.flags.inventoryOpen do
 			if
 				#(
-					GetEntityCoords(LocalPlayer.state.ped)
-					- GetEntityCoords(GetPlayerPed(GetPlayerFromServerId(data.serverId)))
+					GetEntityCoords(PlayerPedId())
+					- GetEntityCoords(GetPlayerPed(GetPlayerFromServerId(hitting.serverId)))
 				) > 3.0
 			then
-				exports.ox_inventory:CloseAll()
+				plsr.Inventory.Close:All()
 			end
 			Wait(2)
 		end
@@ -88,10 +86,10 @@ end)
 
 RegisterNetEvent("Police:Client:RunPlate", function(hitting, data)
 	local veh = hitting.entity
-	local vehEnt = Entity(veh)
+	local vehEnt = plsr.State.Entity(veh)
 
 	if veh then
-		exports['pulsar-hud']:Progress({
+		plsr.Progress:Progress({
 			name = "run_plate",
 			duration = 4000,
 			label = "Running Plate",
@@ -109,24 +107,24 @@ RegisterNetEvent("Police:Client:RunPlate", function(hitting, data)
 			},
 		}, function(cancelled)
 			if not cancelled then
-				if not vehEnt.state.VIN then
+				if not vehEnt.VIN then
 					TriggerServerEvent("Vehicles:Server:RequestGenerateVehicleInfo", VehToNet(veh))
 
-					while not vehEnt.state.VIN do
+					while not vehEnt.VIN do
 						Wait(100)
 					end
 				end
 
 				local plate = GetVehicleNumberPlateText(veh)
-				if vehEnt.state.RegisteredPlate and not vehEnt.state.FakePlate then
-					plate = vehEnt.state.RegisteredPlate
+				if vehEnt.RegisteredPlate and not vehEnt.FakePlate then
+					plate = vehEnt.RegisteredPlate
 				end
 
 				TriggerServerEvent(
 					"Police:Server:RunPlate",
 					plate,
-					vehEnt.state.VIN,
-					string.format("%s", GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehEnt))))
+					vehEnt.VIN,
+					string.format("%s", GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(veh))))
 				)
 			end
 		end)
@@ -134,7 +132,7 @@ RegisterNetEvent("Police:Client:RunPlate", function(hitting, data)
 end)
 
 AddEventHandler("Police:Client:GetRadioChannel", function(entity, data)
-	exports['pulsar-hud']:ProgressWithTickEvent({
+	plsr.Progress:ProgressWithTickEvent({
 		name = "check_freq_action",
 		duration = 2000,
 		label = "Checking Radio Channel",
@@ -152,19 +150,19 @@ AddEventHandler("Police:Client:GetRadioChannel", function(entity, data)
 			anim = "cellphone_text_read_base",
 		},
 	}, function()
-		if #(GetEntityCoords(LocalPlayer.state.ped) - GetEntityCoords(entity.entity)) <= 5.0 then
+		if #(GetEntityCoords(PlayerPedId()) - GetEntityCoords(entity.entity)) <= 5.0 then
 			return
 		end
-		exports['pulsar-hud']:ProgressCancel()
+		plsr.Progress:Cancel()
 	end, function(cancelled)
 		if not cancelled then
-			exports["pulsar-core"]:ServerCallback("Police:GetRadioChannel", entity.serverId, function() end)
+			plsr.Callbacks:ServerCallback("Police:GetRadioChannel", entity.serverId, function() end)
 		end
 	end)
 end)
 
 AddEventHandler("Police:Client:GSR", function(entity, data)
-	exports['pulsar-hud']:Progress({
+	plsr.Progress:Progress({
 		name = "gsr_action",
 		duration = 6000,
 		label = "Performing GSR Test",
@@ -182,13 +180,13 @@ AddEventHandler("Police:Client:GSR", function(entity, data)
 		},
 	}, function(cancelled)
 		if not cancelled then
-			exports["pulsar-core"]:ServerCallback("Police:GSRTest", entity.serverId, function() end)
+			plsr.Callbacks:ServerCallback("Police:GSRTest", entity.serverId, function() end)
 		end
 	end)
 end)
 
 AddEventHandler("Police:Client:BAC", function(entity, data)
-	exports['pulsar-hud']:Progress({
+	plsr.Progress:Progress({
 		name = "bac_action",
 		duration = 6000,
 		label = "Performing Blood Alcohol Test",
@@ -206,13 +204,13 @@ AddEventHandler("Police:Client:BAC", function(entity, data)
 		},
 	}, function(cancelled)
 		if not cancelled then
-			exports["pulsar-core"]:ServerCallback("Police:BACTest", entity.serverId, function() end)
+			plsr.Callbacks:ServerCallback("Police:BACTest", entity.serverId, function() end)
 		end
 	end)
 end)
 
 AddEventHandler("Police:Client:DNASwab", function(entity, data)
-	exports['pulsar-hud']:Progress({
+	plsr.Progress:Progress({
 		name = "dna_action",
 		duration = 6000,
 		label = "Performing DNA Swab",
@@ -230,7 +228,7 @@ AddEventHandler("Police:Client:DNASwab", function(entity, data)
 		},
 	}, function(cancelled)
 		if not cancelled then
-			exports["pulsar-core"]:ServerCallback("Police:DNASwab", entity.serverId, function() end)
+			plsr.Callbacks:ServerCallback("Police:DNASwab", entity.serverId, function() end)
 		end
 	end)
 end)
@@ -243,24 +241,24 @@ local forceDelete = {}
 
 AddEventHandler("Keybinds:Client:KeyDown:cancel_action", function()
 	if spikesOut then
-		SetTimeout(300, function()
+		Citizen.SetTimeout(300, function()
 			TriggerServerEvent("Police:Server:RemoveSpikes")
 		end)
 	end
 end)
 
 RegisterNetEvent("Police:Client:AddDeployedSpike", function(positions, h, owner)
-	if #(GetEntityCoords(LocalPlayer.state.ped) - positions[1]) <= 800.0 then
+	if #(GetEntityCoords(PlayerPedId()) - positions[1]) <= 800.0 then
 		local start = GetGameTimer()
 		local timeout = false
-		SetTimeout(spikeTime - 2000, function()
+		Citizen.SetTimeout(spikeTime - 2000, function()
 			timeout = true
 		end)
 
-		spikesOut = owner == GetPlayerServerId(LocalPlayer.state.PlayerID)
+		spikesOut = owner == GetPlayerServerId(plsr.State.flags.PlayerID)
 
 		while
-			#(GetEntityCoords(LocalPlayer.state.ped) - positions[1]) > 75.0
+			#(GetEntityCoords(PlayerPedId()) - positions[1]) > 75.0
 			and not timeout
 			and not forceDelete[owner]
 		do
@@ -290,7 +288,7 @@ end)
 
 RegisterNetEvent("Police:Client:RemoveSpikes", function(owner)
 	forceDelete[owner] = true
-	SetTimeout(500, function()
+	Citizen.SetTimeout(500, function()
 		forceDelete[owner] = false
 	end)
 end)
@@ -300,8 +298,8 @@ AddEventHandler("Police:Client:SpikeyBois", function(x, y, z, obj, cunts, owner)
 	local pos = vector3(x, y, z)
 	local timer = 0
 	while timer < cunts and not forceDelete[owner] do
-		local veh = GetVehiclePedIsIn(LocalPlayer.state.ped)
-		if veh ~= 0 and LocalPlayer.state.loggedIn then
+		local veh = GetVehiclePedIsIn(PlayerPedId())
+		if veh ~= 0 and plsr.State.flags.loggedIn then
 			local driver = GetPedInVehicleSeat(veh, -1)
 			if driver then
 				local spikeObj = GetClosestObjectOfType(x, y, z, 5.0, spikeModel, false, false, false)
@@ -381,25 +379,25 @@ AddEventHandler("Police:Client:SpikeyBois", function(x, y, z, obj, cunts, owner)
 end)
 
 AddEventHandler("Police:Client:OpenLocker", function()
-	exports["pulsar-core"]:ServerCallback("MDT:OpenPersonalLocker", {}, function(success)
+	plsr.Callbacks:ServerCallback("MDT:OpenPersonalLocker", {}, function(success)
 		if not success then
-			exports["pulsar-hud"]:Notification("error", "Callsign Not Set, Unable To Open Locker")
+			plsr.Notification:Error("Callsign Not Set, Unable To Open Locker")
 		end
 	end)
 end)
 
 AddEventHandler("Polyzone:Enter", function(id, testedPoint, insideZones, data)
 	if data.pdstation then
-		LocalPlayer.state.inPdStation = true
+		plsr.State.flags.inPdStation = true
 	end
 end)
 
 AddEventHandler("Polyzone:Exit", function(id, testedPoint, insideZones, data)
 	if data.pdstation then
-		LocalPlayer.state.inPdStation = false
+		plsr.State.flags.inPdStation = false
 	end
 end)
 
 AddEventHandler("Police:Client:RemoveMask", function(entity, data)
-	exports["pulsar-core"]:ServerCallback("Police:RemoveMask", entity.serverId)
+	plsr.Callbacks:ServerCallback("Police:RemoveMask", entity.serverId)
 end)

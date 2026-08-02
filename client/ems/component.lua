@@ -1,98 +1,101 @@
+local config = load(LoadResourceFile(GetCurrentResourceName(), "config/shared.lua"))()
+
 _evald = {}
 
 local _calledForHelp = false
+CreateThread(function()
+	plsr.Interaction:RegisterMenu("call-911", "Call For Help", "clipboard-list", function(data)
+		plsr.Interaction:Hide()
+		TriggerServerEvent("EMS:Server:RequestHelp")
+		_calledForHelp = GetCloudTimeAsInt() + (60 * 5)
+	end, function()
+		return plsr.State.flags.onDuty ~= "ems"
+			and plsr.State.flags.onDuty ~= "police"
+			and plsr.State.flags.isDead
+			and GetCloudTimeAsInt() > plsr.State.flags.isDeadTime + (60 * 2)
+			and (not _calledForHelp or GetCloudTimeAsInt() > _calledForHelp)
+	end)
 
-AddEventHandler('onClientResourceStart', function(resource)
-	if resource == GetCurrentResourceName() then
-		Wait(1000)
-		exports['pulsar-hud']:InteractionRegisterMenu("call-911", "Call For Help", "siren-on", function(data)
-			exports['pulsar-hud']:InteractionHide()
-			TriggerServerEvent("EMS:Server:RequestHelp")
-			_calledForHelp = GetCloudTimeAsInt() + (60 * 5)
-		end, function()
-			return LocalPlayer.state.onDuty ~= "ems"
-				and LocalPlayer.state.onDuty ~= "police"
-				and LocalPlayer.state.isDead
-				and GetCloudTimeAsInt() > LocalPlayer.state.isDeadTime + (60 * 2)
-				and (not _calledForHelp or GetCloudTimeAsInt() > _calledForHelp)
-		end)
+	plsr.Interaction:RegisterMenu("ems", false, "clipboard-list", function(data)
+		plsr.Interaction:ShowMenu({
+			{
+				icon = "clipboard-list",
+				label = "13-A",
+				action = function()
+					plsr.Interaction:Hide()
+					TriggerServerEvent("EMS:Server:Panic", true)
+				end,
+				shouldShow = function()
+					return plsr.State.flags.isDead
+				end,
+			},
+			{
+				icon = "siren",
+				label = "13-B",
+				action = function()
+					plsr.Interaction:Hide()
+					TriggerServerEvent("EMS:Server:Panic", false)
+				end,
+				shouldShow = function()
+					return plsr.State.flags.isDead
+				end,
+			},
+		})
+	end, function()
+		return plsr.State.flags.onDuty == "ems" and plsr.State.flags.onDuty and plsr.State.flags.isDead
+	end)
 
-		exports['pulsar-hud']:InteractionRegisterMenu("ems", false, "siren-on", function(data)
-			exports['pulsar-hud']:InteractionShowMenu({
-				{
-					icon = "siren-on",
-					label = "13-A",
-					action = function()
-						exports['pulsar-hud']:InteractionHide()
-						TriggerServerEvent("EMS:Server:Panic", true)
-					end,
-					shouldShow = function()
-						return LocalPlayer.state.isDead
-					end,
-				},
-				{
-					icon = "siren",
-					label = "13-B",
-					action = function()
-						exports['pulsar-hud']:InteractionHide()
-						TriggerServerEvent("EMS:Server:Panic", false)
-					end,
-					shouldShow = function()
-						return LocalPlayer.state.isDead
-					end,
-				},
-			})
-		end, function()
-			return LocalPlayer.state.onDuty == "ems" and LocalPlayer.state.onDuty and LocalPlayer.state.isDead
-		end)
+	plsr.Interaction:RegisterMenu("ems-utils", "EMS Utilities", "tablet-rugged", function(data)
+		plsr.Interaction:ShowMenu({
+			{
+				icon = "tablet-screen-button",
+				label = "MDT",
+				action = function()
+					plsr.Interaction:Hide()
+					TriggerEvent("MDT:Client:Toggle")
+				end,
+				shouldShow = function()
+					return plsr.State.flags.onDuty == "ems"
+				end,
+			},
+			{
+				icon = "camera-security",
+				label = "Toggle Body Cam",
+				action = function()
+					plsr.Interaction:Hide()
+					TriggerEvent("MDT:Client:ToggleBodyCam")
+				end,
+				shouldShow = function()
+					return plsr.State.flags.onDuty == "ems"
+				end,
+			},
+		})
+	end, function()
+		return plsr.State.flags.onDuty == "ems"
+	end)
 
-		exports['pulsar-hud']:InteractionRegisterMenu("ems-utils", "EMS Utilities", "tablet-rugged", function(data)
-			exports['pulsar-hud']:InteractionShowMenu({
-				{
-					icon = "tablet-screen-button",
-					label = "MDT",
-					action = function()
-						exports['pulsar-hud']:InteractionHide()
-						TriggerEvent("MDT:Client:Toggle")
-					end,
-					shouldShow = function()
-						return LocalPlayer.state.onDuty == "ems"
-					end,
-				},
-				{
-					icon = "video",
-					label = "Toggle Body Cam",
-					action = function()
-						exports['pulsar-hud']:InteractionHide()
-						TriggerEvent("MDT:Client:ToggleBodyCam")
-					end,
-					shouldShow = function()
-						return LocalPlayer.state.onDuty == "ems"
-					end,
-				},
-			})
-		end, function()
-			return LocalPlayer.state.onDuty == "ems"
-		end)
+	plsr.Callbacks:RegisterClientCallback("EMS:ApplyBandage", function(data, cb)
+		SetEntityHealth(PlayerPedId(), GetEntityHealth(PlayerPedId()) + 10)
+		cb(true)
+	end)
 
-		exports["pulsar-core"]:RegisterClientCallback("EMS:ApplyBandage", function(data, cb)
-			SetEntityHealth(LocalPlayer.state.ped, GetEntityHealth(LocalPlayer.state.ped) + 10)
-			cb(true)
-		end)
-
-		exports["pulsar-core"]:RegisterClientCallback("EMS:Heal", function(data, cb)
-			SetEntityHealth(LocalPlayer.state.ped, GetEntityHealth(LocalPlayer.state.ped) + data)
-			cb(true)
-		end)
-	end
+	plsr.Callbacks:RegisterClientCallback("EMS:Heal", function(data, cb)
+		SetEntityHealth(PlayerPedId(), GetEntityHealth(PlayerPedId()) + data)
+		cb(true)
+	end)
 end)
 
-exports('HaveEvaluated', function(id)
-	return _evald[id] ~= nil and _evald[id] > GetGameTimer()
+AddEventHandler("Proxy:Shared:RegisterReady", function()
+	exports["pulsar_core"]:RegisterComponent("EMS", _EMS)
 end)
+
+_EMS = {
+	HaveEvaluated = function(self, id)
+		return _evald[id] ~= nil and _evald[id] > GetGameTimer()
+	end,
+}
 
 RegisterNetEvent("Characters:Client:Spawn", function()
-	for k, v in ipairs(Config.HospitalBlips) do
-		exports["pulsar-blips"]:Add("hospital_" .. k, v.label, v.coords, 61, 42, 0.8)
-	end
+	local hospitalBlip = config.Hospital.blip
+	plsr.Blips:Add("st_fiacre", "Hospital", hospitalBlip.coords, hospitalBlip.sprite, hospitalBlip.colour, hospitalBlip.scale)
 end)
